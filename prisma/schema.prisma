@@ -1,0 +1,155 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+// --- NEXTAUTH MODELS ---
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  
+  // App Specific Relations
+  days          UserDaysList[]
+  belovedMeals  UsersBelovedMeals[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- CORE APP MODELS ---
+
+model Food {
+  id            Int             @id @default(autoincrement())
+  name          String
+  protein       Int             @default(0)
+  carbohydrates Int             @default(0)
+  fat           Int             @default(0)
+  calories      Int             @default(0)
+  image         String?
+  
+  recipes       RecipeContent[]
+  logs          DailyLog[]      // For direct food logging (the Apple case)
+}
+
+model Dish {
+  id      Int             @id @default(autoincrement())
+  name    String
+  image   String?
+  path    String?         // Slug or file path
+  
+  ingredients RecipeContent[]
+  meals       MealDishes[]
+  logs        DailyLog[]
+}
+
+model RecipeContent {
+  id      Int  @id @default(autoincrement())
+  dishId  Int
+  foodId  Int
+  amount  Int  @default(1) // Quantity of the food in this dish
+
+  dish    Dish @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  food    Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+}
+
+model Meal {
+  id      Int             @id @default(autoincrement())
+  name    String
+  image   String?
+  likes   Int             @default(0)
+  
+  dishes  MealDishes[]
+  beloved UsersBelovedMeals[]
+}
+
+model MealDishes {
+  mealId Int
+  dishId Int
+
+  meal   Meal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  dish   Dish @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@id([mealId, dishId]) // Composite key for many-to-many
+}
+
+// --- USER TRACKING MODELS ---
+
+model UsersBelovedMeals {
+  userId         String
+  mealId         Int
+  isLiked        Boolean @default(false)
+  countsConsumed Int     @default(0)
+
+  user           User    @relation(fields: [userId], references: [id])
+  meal           Meal    @relation(fields: [mealId], references: [id])
+
+  @@id([userId, mealId])
+}
+
+model UserDaysList {
+  id         Int        @id @default(autoincrement())
+  userId     String
+  dayNumber  Int
+  date       DateTime   @default(now())
+  
+  logs       DailyLog[]
+  user       User       @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, dayNumber])
+  @@unique([userId, date])
+}
+
+model DailyLog {
+  id         Int          @id @default(autoincrement())
+  use_day_id Int
+  dishId     Int?         // Nullable for direct food logging
+  foodId     Int?         // Nullable for dish logging
+  amount     Int          @default(1)
+
+  day        UserDaysList @relation(fields: [use_day_id], references: [id])
+  dish       Dish?        @relation(fields: [dishId], references: [id])
+  food       Food?        @relation(fields: [foodId], references: [id])
+}
