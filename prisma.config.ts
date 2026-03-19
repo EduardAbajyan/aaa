@@ -3,6 +3,7 @@ import { defineConfig } from "prisma/config";
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL, // ✅ top-level
+    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL, // optional
   },
 });
