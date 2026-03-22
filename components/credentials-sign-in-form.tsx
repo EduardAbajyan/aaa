@@ -5,41 +5,39 @@ import cssClasses from "./credentials-sign-in-form.module.css";
 import { useActionState, useState, useEffect } from "react";
 import { AuthAction } from "@/server_actions/auth";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AuthForm({
   mode = "login",
 }: {
   mode: "login" | "signup";
 }) {
-  const [formState, formAction] = useActionState(
-    AuthAction.bind(null, mode),
-    { success: false, error: undefined },
-  );
+  const router = useRouter();
   
-  const [showError, setShowError] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [formState, formAction] = useActionState(AuthAction.bind(null, mode), {
+    success: false,
+    error: undefined,
+  });
 
-  // Hide error message after 3 seconds
+  const [showError, setShowError] = useState(false);
+
+  // Hide error message after 10 seconds
   useEffect(() => {
     if (formState.error) {
       setShowError(true);
       const timer = setTimeout(() => {
         setShowError(false);
-      }, 3000);
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [formState.error]);
 
-  // Hide success message after 3 seconds  
+  // Redirect on successful authentication
   useEffect(() => {
     if (formState.success) {
-      setShowSuccess(true);
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
-      return () => clearTimeout(timer);
+      router.push("/dashboard"); // or wherever you want to redirect
     }
-  }, [formState.success]);
+  }, [formState.success, router]);
 
   return (
     <section className={cssClasses.auth}>
@@ -48,14 +46,7 @@ export default function AuthForm({
           {mode === "login" ? "Login" : "Sign Up"}
         </h1>
         {formState.error && showError && (
-          <div className={cssClasses.error}>
-            {formState.error}
-          </div>
-        )}
-        {formState.success && showSuccess && (
-          <div className={cssClasses.success}>
-            {mode === "login" ? "Login successful!" : "Account created successfully!"}
-          </div>
+          <div className={cssClasses.error}>{formState.error}</div>
         )}
         <div className={cssClasses.control}>
           <label htmlFor="email">Your Email:</label>

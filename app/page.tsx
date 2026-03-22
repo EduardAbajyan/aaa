@@ -1,4 +1,7 @@
 import Image from "next/image";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+
 import styles from "./page.module.css";
 import logo from "./assets/logo.png";
 
@@ -10,13 +13,18 @@ export default async function Home({
 }: {
   searchParams: { mode?: "login" | "signup" };
 }) {
-  const Params = await searchParams;
-  const mode = Params.mode ?? "login";
-  return (
-    <div className={styles.container}>
-      <Image src={logo} alt="logo" width={315} height={270} loading="eager" />
-      <GoogleSingIn />
-      <AuthForm mode={mode} />
-    </div>
-  );
+  const session = await auth();
+  if (!session) {
+    const Params = await searchParams;
+    const mode = Params.mode ?? "login";
+    return (
+      <div className={styles.container}>
+        <Image src={logo} alt="logo" width={315} height={270} loading="eager" />
+        <GoogleSingIn />
+        <AuthForm mode={mode} />
+      </div>
+    );
+  } else {
+    return redirect("/dashboard");
+  }
 }
