@@ -1,7 +1,22 @@
 import Image from "next/image";
-//import { signIn, signOut, auth } from "@/lib/auth";
-import SignInButton from "@/components/google-sign-in-button";
+import styles from "./page.module.css";
+import logo from "./assets/logo.png";
 
-export default function Home() {
-  return <SignInButton />;
+import GoogleSingIn from "@/components/google-sign-in-button";
+import AuthForm from "@/components/credentials-sign-in-form";
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: { mode?: "login" | "signup" };
+}) {
+  const Params = await searchParams;
+  const mode = Params.mode ?? "login";
+  return (
+    <div className={styles.container}>
+      <Image src={logo} alt="logo" width={315} height={270} loading="eager" />
+      <GoogleSingIn />
+      <AuthForm mode={mode} />
+    </div>
+  );
 }
