@@ -1,1 +1,78 @@
-use server;\n\nimport { createUser } from "/@/lib/auth";\nimport { LoginSchema, SignupSchema } from "/@/schemas/auth";\nimport { prisma } from "/@/lib/prisma";\nimport bcrypt from "bcryptjs";\nimport { signIn } from "/@/auth";\nimport { AuthError } from "next-auth";\n\nasync function login(\n  prevState: { success?: boolean; error?: string },\n  formData: FormData,\n) {\n  const email = formData.get("email") as string;\n  const password = formData.get("password") as string;\n  console.log("Login with:", { email, password });\n\n  try {\n    const validatedData = LoginSchema.parse({ email, password });\n    console.log("Validated login data:", validatedData);\n\n    await signIn("credentials", {\n      email: validatedData.email,\n      password: password,\n      redirect: false,\n    });\n\n    console.log("Login successful for user:", validatedData.email);\n    return { success: true, error: undefined };\n  } catch (error) {\n    if (error instanceof AuthError) {\n      switch (error.type) {\n        case "CredentialsSignin":\n          return { success: false, error: "Invalid credentials." };\n        default:\n          return { success: false, error: "Something went wrong." };\n      }\n    }\n    console.error("Login error:", error);\n    return { success: false, error: "Invalid credentials format or login error" };\n  }\n}\n\nasync function signUp(\n  prevState: { success?: boolean; error?: string },\n  formData: FormData,\n) {\n  const email = formData.get("email") as string;\n  const password = formData.get("password") as string;\n  console.log("Sign up with:", { email, password });\n\n  try {\n    // Validate signup credentials\n    const validatedData = SignupSchema.parse({ email, password });\n    console.log("Validated signup data:", validatedData);\n\n    const salt = bcrypt.genSaltSync(10);\n    const hash = await bcrypt.hash(password, salt);\n\n    try {\n      // Save user to database\n      const result = await createUser(validatedData.email, hash);\n      console.log("User created in database:", result);\n      return { success: true, error: undefined };\n    } catch (dbError: any) {\n      console.error("Database error during signup:", dbError);\n      if (dbError.message.includes("already exists")) {\n        return { success: false, error: "User with this email already exists" };\n      }\n      return { success: false, error: "Failed to create user account" };\n    }\n  } catch (error) {\n    console.error("Signup validation error:", error);\n    return { success: false, error: "Invalid credentials format" };\n  }\n}\n\nexport async function AuthAction(\n  mode: "login" | "signup",\n  prevState: { success?: boolean; error?: string },\n  formData: FormData,\n) {\n  console.log("Auth action called with mode:", mode);\n  if (mode === "login") return await login(prevState, formData);\n  else return await signUp(prevState, formData);\n}
+"use server";
+import { createUser } from "@/lib/auth";
+import { LoginSchema, SignupSchema } from "@/schemas/auth";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { signIn } from "@/auth";
+import { AuthError } from "next-auth";
+
+async function login(
+  prevState: { success?: boolean; error?: string },
+  formData: FormData,
+) {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  console.log("Login with:", { email, password });
+  try {
+    const validatedData = LoginSchema.parse({ email, password });
+    console.log("Validated login data:", validatedData);
+    await signIn("credentials", {
+      email: validatedData.email,
+      password: password,
+      redirect: false,
+    });
+    console.log("Login successful for user:", validatedData.email);
+    return { success: true, error: undefined };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return { success: false, error: "Invalid credentials." };
+        default:
+          return { success: false, error: "Something went wrong." };
+      }
+    }
+    console.error("Login error:", error);
+    return {
+      success: false,
+      error: "Invalid credentials format or login error",
+    };
+  }
+}
+async function signUp(
+  prevState: { success?: boolean; error?: string },
+  formData: FormData,
+) {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  console.log("Sign up with:", { email, password });
+  try {
+    const validatedData = SignupSchema.parse({ email, password });
+    console.log("Validated signup data:", validatedData);
+    const salt = bcrypt.genSaltSync(10);
+    const hash = await bcrypt.hash(password, salt);
+    try {
+      const result = await createUser(validatedData.email, hash);
+      console.log("User created in database:", result);
+      return { success: true, error: undefined };
+    } catch (dbError: any) {
+      console.error("Database error during signup:", dbError);
+      if (dbError.message.includes("already exists")) {
+        return { success: false, error: "User with this email already exists" };
+      }
+      return { success: false, error: "Failed to create user account" };
+    }
+  } catch (error) {
+    console.error("Signup validation error:", error);
+    return { success: false, error: "Invalid credentials format" };
+  }
+}
+export async function AuthAction(
+  mode: "login" | "signup",
+  prevState: { success?: boolean; error?: string },
+  formData: FormData,
+) {
+  console.log("Auth action called with mode:", mode);
+  if (mode === "login") return await login(prevState, formData);
+  else return await signUp(prevState, formData);
+}
