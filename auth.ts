@@ -21,14 +21,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
-        
+
         if (!user || !user.password) return null;
-        
+
         // Check if email is verified for credentials login
         if (!user.emailVerified) {
           throw new Error("EMAIL_NOT_VERIFIED");
         }
-        
+
         const isValid = await bcrypt.compare(
           credentials.password as string,
           user.password,
@@ -45,24 +45,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (existingUser) {
-          console.log(
-            "\nGoogle user already exists - proceeding with sign-in\n",
-          );
-          // Google users are automatically verified
+          console.log("\nLinking Google account manually\n");
+
+          // Check if account already linked
+          const existingAccount = await prisma.account.findFirst({
+            where: {
+              provider: "google",
+              providerAccountId: account.providerAccountId,
+            },
+          });
+
+          if (!existingAccount) {
+            await prisma.account.create({
+              data: {
+                userId: existingUser.id,
+                type: "oauth",
+                provider: "google",
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+              },
+            });
+          }
+
+          // Ensure email is verified
           if (!existingUser.emailVerified) {
             await prisma.user.update({
-              where: { email: user.email! },
+              where: { id: existingUser.id },
               data: { emailVerified: new Date() },
             });
           }
+
           return true;
         }
-        // New Google user - will be auto-verified by the adapter
-        return true;
-      } else if (account?.provider === "credentials") {
-        // Credentials users must have verified email (checked in authorize)
+
         return true;
       }
+
+      if (account?.provider === "credentials") {
+        return true;
+      }
+
       return true;
     },
   },
