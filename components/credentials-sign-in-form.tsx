@@ -3,7 +3,7 @@
 import cssClasses from "./credentials-sign-in-form.module.css";
 
 import { useActionState, useState, useEffect } from "react";
-import { AuthAction } from "@/server_actions/auth";
+import { AuthAction, type ActionState } from "@/server_actions/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -16,8 +16,7 @@ export default function AuthForm({
   
   const [formState, formAction] = useActionState(AuthAction.bind(null, mode), {
     success: false,
-    error: undefined,
-  });
+  } as ActionState);
 
   const [showError, setShowError] = useState(false);
 
@@ -32,55 +31,102 @@ export default function AuthForm({
     }
   }, [formState.error]);
 
-  // Redirect on successful authentication
+  // Redirect on successful login (but not signup since we need email verification)
   useEffect(() => {
-    if (formState.success) {
-      router.push("/dashboard"); // or wherever you want to redirect
+    if (formState.success && mode === "login") {
+      router.push("/dashboard");
     }
-  }, [formState.success, router]);
+  }, [formState.success, mode, router]);
 
   return (
     <section className={cssClasses.auth}>
-      <form className={cssClasses.form} action={formAction}>
-        <h1 className={cssClasses.header}>
-          {mode === "login" ? "Login" : "Sign Up"}
-        </h1>
-        {formState.error && showError && (
-          <div className={cssClasses.error}>{formState.error}</div>
-        )}
-        <div className={cssClasses.control}>
-          <label htmlFor="email">Your Email:</label>
-          <input
-            className={cssClasses.input}
-            type="email"
-            id="email"
-            name="email"
-            placeholder="user@server.domain"
-            required
-          />
+      {formState.success && mode === "signup" ? (
+        // Show success message for signup with verification instructions
+        <div className={cssClasses.form}>
+          <h1 className={cssClasses.header}>Check Your Email! 📧</h1>
+          <div className="space-y-4 text-center">
+            <div className={`${cssClasses.success} p-4 bg-green-50 border border-green-200 rounded-lg`}>
+              <p className="text-green-800 font-medium">
+                {formState.message || "Account created successfully!"}
+              </p>
+              <p className="text-green-600 text-sm mt-2">
+                Please check your inbox and click the verification link to complete your registration.
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Link 
+                href="/resend-verification"
+                className="inline-block text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Didn&apos;t receive the email? Resend verification
+              </Link>
+              <br />
+              <Link 
+                href="/?mode=login"
+                className="inline-block text-sm text-gray-600 hover:text-gray-800"
+              >
+                Back to Login
+              </Link>
+            </div>
+          </div>
         </div>
-        <div className={cssClasses.control}>
-          <label htmlFor="password">Your Password:</label>
-          <input
-            className={cssClasses.input}
-            type="password"
-            id="password"
-            name="password"
-            placeholder="****************"
-            required
-          />
-        </div>
-        <div className={cssClasses.actions}>
-          <button className={cssClasses.button}>
-            {mode === "login" ? "Login" : "Create Account"}
-          </button>
-          <Link href={`/?mode=${mode === "login" ? "signup" : "login"}`}>
-            {mode === "login"
-              ? "Create an account."
-              : "Login with existing account."}
-          </Link>
-        </div>
-      </form>
+      ) : (
+        <form className={cssClasses.form} action={formAction}>
+          <h1 className={cssClasses.header}>
+            {mode === "login" ? "Login" : "Sign Up"}
+          </h1>
+          
+          {formState.error && showError && (
+            <div className={cssClasses.error}>
+              {formState.error}
+              {formState.needsVerification && (
+                <div className="mt-2">
+                  <Link 
+                    href="/resend-verification"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Resend verification email
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className={cssClasses.control}>
+            <label htmlFor="email">Your Email:</label>
+            <input
+              className={cssClasses.input}
+              type="email"
+              id="email"
+              name="email"
+              placeholder="user@server.domain"
+              required
+            />
+          </div>
+          <div className={cssClasses.control}>
+            <label htmlFor="password">Your Password:</label>
+            <input
+              className={cssClasses.input}
+              type="password"
+              id="password"
+              name="password"
+              placeholder="****************"
+              required
+            />
+          </div>
+          <div className={cssClasses.actions}>
+            <button className={cssClasses.button}>
+              {mode === "login" ? "Login" : "Create Account"}
+            </button>
+            <Link href={`/?mode=${mode === "login" ? "signup" : "login"}`}>
+              {mode === "login"
+                ? "Create an account."
+                : "Login with existing account."}
+            </Link>
+          </div>
+        </form>
+      )}
     </section>
   );
 }

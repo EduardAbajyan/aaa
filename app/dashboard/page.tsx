@@ -10,7 +10,7 @@ export default async function DashboardPage({
 
   async function handleSignOut() {
     "use server";
-    await signOut({ redirectTo: "/" });
+    return await signOut({ redirectTo: "/" });
   }
 
   return (
