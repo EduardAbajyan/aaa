@@ -84,7 +84,23 @@ async function signUp(
 
     if (existingUser) {
       if (existingUser.emailVerified) {
-        return { success: false, error: "User with this email already exists" };
+        if (existingUser.password) {
+          return {
+            success: false,
+            error: "User with this email already exists",
+          };
+        } else {
+          const salt = bcrypt.genSaltSync(10);
+          const hash = await bcrypt.hash(password, salt);
+          await prisma.user.update({
+            where: { id: existingUser.id }, // 👈 which row
+            data: { password: hash }, // 👈 what to change
+          });
+          return {
+            success: true,
+            message: "Password set successfully! You can now log in.",
+          };
+        }
       } else {
         // User exists but not verified - resend verification email
         const token = await generateVerificationToken(validatedData.email);
